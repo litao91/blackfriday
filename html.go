@@ -462,6 +462,10 @@ var (
 	h5CloseTag         = []byte("</h5>")
 	h6Tag              = []byte("<h6")
 	h6CloseTag         = []byte("</h6>")
+	mathTag            = []byte(`<span class="math inline">\(`)
+	mathCloseTag       = []byte(`\)</span>`)
+	blockMathTag       = []byte(`<p><span class="math display">\[`)
+	blockMathCloseTag  = []byte(`\]</span></p>`)
 
 	footnotesDivBytes      = []byte("\n<div class=\"footnotes\">\n\n")
 	footnotesCloseDivBytes = []byte("\n</div>\n")
@@ -824,6 +828,14 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 			r.out(w, trCloseTag)
 			r.cr(w)
 		}
+	case Math:
+		r.out(w, mathTag)
+		escapeHTML(w, node.Literal)
+		r.out(w, mathCloseTag)
+	case MathBlock:
+		r.out(w, blockMathTag)
+		escapeHTML(w, node.Literal)
+		r.out(w, blockMathCloseTag)
 	default:
 		panic("Unknown node type " + node.Type.String())
 	}

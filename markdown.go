@@ -47,13 +47,14 @@ const (
 	AutoHeadingIDs                                // Create the heading ID from the text
 	BackslashLineBreak                            // Translate trailing backslashes into line breaks
 	DefinitionLists                               // Render definition lists
+	MathJaxSupport                                // Render with MathJaxSupport
 
 	CommonHTMLFlags HTMLFlags = UseXHTML | Smartypants |
 		SmartypantsFractions | SmartypantsDashes | SmartypantsLatexDashes
 
 	CommonExtensions Extensions = NoIntraEmphasis | Tables | FencedCode |
 		Autolink | Strikethrough | SpaceHeadings | HeadingIDs |
-		BackslashLineBreak | DefinitionLists
+		BackslashLineBreak | DefinitionLists | MathJaxSupport
 )
 
 // ListType contains bitwise or'ed flags for list and list item objects.
@@ -304,6 +305,9 @@ func New(opts ...Option) *Markdown {
 		p.inlineCallback['H'] = maybeAutoLink
 		p.inlineCallback['M'] = maybeAutoLink
 		p.inlineCallback['F'] = maybeAutoLink
+	}
+	if p.extensions&MathJaxSupport != 0 {
+		p.inlineCallback['$'] = math
 	}
 	if p.extensions&Footnotes != 0 {
 		p.notes = make([]*reference, 0)

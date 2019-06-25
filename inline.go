@@ -1217,6 +1217,28 @@ func helperTripleEmphasis(p *Markdown, data []byte, offset int, c byte) (int, *N
 	return 0, nil
 }
 
+func math(p *Markdown, data []byte, offset int) (int, *Node) {
+	data = data[offset:]
+	// too short or block math
+	if len(data) <= 2 || data[1] == '$' {
+		return 0, nil
+	}
+	// find next '$'
+	var end int
+	for end = 1; end < len(data) && data[end] != '$'; end++ {
+	}
+
+	// $ not match
+	if end == len(data) {
+		return 0, nil
+	}
+
+	// create inline math node
+	math := NewNode(Math)
+	math.Literal = data[1:end]
+	return end + 1, math
+}
+
 func text(s []byte) *Node {
 	node := NewNode(Text)
 	node.Literal = s
