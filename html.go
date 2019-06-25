@@ -316,15 +316,15 @@ func isSmartypantable(node *Node) bool {
 	return pt != Link && pt != CodeBlock && pt != Code
 }
 
-func appendLanguageAttr(attrs []string, info []byte) []string {
+func codeBlockReadLang(info []byte) string {
 	if len(info) == 0 {
-		return attrs
+		return ""
 	}
 	endOfLang := bytes.IndexAny(info, "\t ")
 	if endOfLang < 0 {
 		endOfLang = len(info)
 	}
-	return append(attrs, fmt.Sprintf("class=\"language-%s\"", info[:endOfLang]))
+	return string(info[:endOfLang])
 }
 
 func (r *HTMLRenderer) tag(w io.Writer, name []byte, attrs []string) {
@@ -466,6 +466,8 @@ var (
 	mathCloseTag       = []byte(`\)</span>`)
 	blockMathTag       = []byte(`<p><span class="math display">\[`)
 	blockMathCloseTag  = []byte(`\]</span></p>`)
+	divTag             = []byte("<div>")
+	divCloseTag        = []byte("</div>")
 
 	footnotesDivBytes      = []byte("\n<div class=\"footnotes\">\n\n")
 	footnotesCloseDivBytes = []byte("\n</div>\n")
@@ -762,15 +764,24 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 			r.cr(w)
 		}
 	case CodeBlock:
-		attrs = appendLanguageAttr(attrs, node.Info)
-		r.cr(w)
-		r.out(w, preTag)
-		r.tag(w, codeTag[:len(codeTag)-1], attrs)
-		escapeHTML(w, node.Literal)
-		r.out(w, codeCloseTag)
-		r.out(w, preCloseTag)
-		if node.Parent.Type != Item {
+		lang := codeBlockReadLang(node.Info)
+		if lang == "dot" || lang == "mermaid" || lang == "flow" {
+			attrs = append(attrs, fmt.Sprintf("class=\"%s\"", lang))
 			r.cr(w)
+			r.tag(w, divTag[:len(divTag)-1], attrs)
+			escapeHTML(w, node.Literal)
+			r.out(w, divCloseTag)
+		} else {
+			attrs = append(attrs, fmt.Sprintf("class=\"language-%s\"", lang))
+			r.cr(w)
+			r.out(w, preTag)
+			r.tag(w, codeTag[:len(codeTag)-1], attrs)
+			escapeHTML(w, node.Literal)
+			r.out(w, codeCloseTag)
+			r.out(w, preCloseTag)
+			if node.Parent.Type != Item {
+				r.cr(w)
+			}
 		}
 	case Table:
 		if entering {
