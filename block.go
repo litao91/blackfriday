@@ -189,12 +189,42 @@ func (p *Markdown) block(data []byte) {
 			}
 		}
 
+		// handle math block
+		if p.extensions&MathJaxSupport != 0 {
+			if i := p.blockMath(data); i > 0 {
+				data = data[i:]
+				continue
+			}
+		}
+
 		// anything else must look like a normal paragraph
 		// note: this finds underlined headings, too
 		data = data[p.paragraph(data):]
 	}
 
 	p.nesting--
+}
+
+// blockMath handle block surround with $$
+func (p *Markdown) blockMath(data []byte) int {
+	if len(data) <= 4 || data[0] != '$' || data[1] != '$' {
+		return 0
+	}
+
+	// find next $$
+	var end int
+	for end = 2; end+1 < len(data) && (data[end] != '$' || data[end+1] != '$'); end++ {
+	}
+
+	// not match
+	if end+1 == len(data) {
+		return 0;
+	}
+
+	container := p.addChild(MathBlock, 0)
+	container.Literal = data[2:end]
+
+	return end+2
 }
 
 func (p *Markdown) addBlock(typ NodeType, content []byte) *Node {

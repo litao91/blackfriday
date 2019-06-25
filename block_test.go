@@ -1625,6 +1625,16 @@ func TestListWithFencedCodeBlockNoExtensions(t *testing.T) {
 	doTestsBlock(t, tests, 0)
 }
 
+func TestMathBlock(t *testing.T) {
+	var tests = []string{
+		"$y=a+b$$",
+		"<p><span class=\"math inline\">\\(y=a+b\\)</span>$</p>\n",
+		"$$y_2=a_3+b_4$$",
+		"<p><span class=\"math display\">\\[y_2=a_3+b_4\\]</span></p>",
+	}
+	doTestsBlock(t, tests, CommonExtensions)
+}
+
 func TestTitleBlock_EXTENSION_TITLEBLOCK(t *testing.T) {
 	t.Parallel()
 	var tests = []string{
