@@ -94,9 +94,9 @@ type HTMLRendererParameters struct {
 	// Resulting levels are clipped between 1 and 6.
 	HeadingLevelOffset int
 
-	Title string // Document title (used if CompletePage is set)
-	CSS   string // Optional CSS file URL (used if CompletePage is set)
-	Icon  string // Optional icon file URL (used if CompletePage is set)
+	Title      string   // Document title (used if CompletePage is set)
+	CSS        string   // Optional CSS file URL (used if CompletePage is set)
+	Icon       string   // Optional icon file URL (used if CompletePage is set)
 	ChartLangs []string // Optional language types for chart if EnableChart flag is set
 
 	Flags HTMLFlags // Flags allow customizing this renderer's behavior
@@ -500,15 +500,14 @@ func (r *HTMLRenderer) outHRTag(w io.Writer) {
 	}
 }
 
-
 // utility function
 func contains(s []string, e string) bool {
-    for _, a := range s {
-        if a == e {
-            return true
-        }
-    }
-    return false
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 // RenderNode is a default renderer of a single node of a syntax tree. For
