@@ -47,6 +47,7 @@ const (
 	SmartypantsAngledQuotes                       // Enable angled double quotes (with Smartypants) for double quotes rendering
 	SmartypantsQuotesNBSP                         // Enable « French guillemets » (with Smartypants)
 	TOC                                           // Generate a table of contents
+	EnableChart                                   // When the language of code block matches the given chart type, generate <div> instead of <code>
 )
 
 var (
@@ -96,6 +97,7 @@ type HTMLRendererParameters struct {
 	Title string // Document title (used if CompletePage is set)
 	CSS   string // Optional CSS file URL (used if CompletePage is set)
 	Icon  string // Optional icon file URL (used if CompletePage is set)
+	ChartLangs []string // Optional language types for chart if EnableChart flag is set
 
 	Flags HTMLFlags // Flags allow customizing this renderer's behavior
 }
@@ -498,6 +500,17 @@ func (r *HTMLRenderer) outHRTag(w io.Writer) {
 	}
 }
 
+
+// utility function
+func contains(s []string, e string) bool {
+    for _, a := range s {
+        if a == e {
+            return true
+        }
+    }
+    return false
+}
+
 // RenderNode is a default renderer of a single node of a syntax tree. For
 // block nodes it will be called twice: first time with entering=true, second
 // time with entering=false, so that it could know when it's working on an open
@@ -765,8 +778,8 @@ func (r *HTMLRenderer) RenderNode(w io.Writer, node *Node, entering bool) WalkSt
 		}
 	case CodeBlock:
 		lang := codeBlockReadLang(node.Info)
-		if lang == "dot" || lang == "mermaid" || lang == "flow" {
-			attrs = append(attrs, fmt.Sprintf("class=\"%s\"", lang))
+		if (r.Flags&EnableChart) != 0 && r.ChartLangs != nil && contains(r.ChartLangs, lang) {
+			attrs = append(attrs, fmt.Sprintf("class=\"chart-%s\"", lang))
 			r.cr(w)
 			r.tag(w, divTag[:len(divTag)-1], attrs)
 			escapeHTML(w, node.Literal)
