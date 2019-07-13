@@ -17,6 +17,7 @@ import (
 	"bytes"
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 )
@@ -29,6 +30,9 @@ const (
 var (
 	reBackslashOrAmp      = regexp.MustCompile("[\\&]")
 	reEntityOrEscapedChar = regexp.MustCompile("(?i)\\\\" + escapable + "|" + charEntity)
+	reBulletListMarker    = regexp.MustCompile("^[*+-]")
+	reOrderedListMarker   = regexp.MustCompile(`^(\d{1,9})([.)])`)
+	reNonSpace            = regexp.MustCompile(`[^ \t\f\v\r\n]`)
 )
 
 // Parse block-level data.
@@ -160,19 +164,24 @@ func (p *Markdown) block(data []byte) {
 		// * Item 2
 		//
 		// also works with + or -
+		/*
 		if p.uliPrefix(data) > 0 {
 			data = data[p.list(data, 0):]
 			continue
 		}
+		*/
 
 		// a numbered/ordered list:
 		//
 		// 1. Item 1
 		// 2. Item 2
+		/*
 		if p.oliPrefix(data) > 0 {
 			data = data[p.list(data, ListTypeOrdered):]
 			continue
 		}
+		*/
+		// list item
 
 		// definition lists:
 		//
@@ -218,13 +227,13 @@ func (p *Markdown) blockMath(data []byte) int {
 
 	// not match
 	if end+1 == len(data) {
-		return 0;
+		return 0
 	}
 
 	container := p.addChild(MathBlock, 0)
 	container.Literal = data[2:end]
 
-	return end+2
+	return end + 2
 }
 
 func (p *Markdown) addBlock(typ NodeType, content []byte) *Node {
@@ -1094,6 +1103,93 @@ func (p *Markdown) code(data []byte) int {
 	return i
 }
 
+// Parse a list marker and return data on the marker (type, start, delimiter, bullet character, padding) or null
+
+type ListMarker struct {
+	Type         string
+	Tight        bool
+	BulletChar   byte
+	Start        int
+	Delimiter    string
+	Padding      int
+	MarkerOffset int
+}
+
+func (p *Markdown) parseListMarker(data []byte) (*ListMarker, []byte) {
+	indent := 0
+	nextNonSpace := 0
+	// find the first nonspace character
+	for i, c := range data {
+		if c == '\t' {
+			indent += 4
+		} else if c == ' ' {
+			indent += 1
+		} else {
+			nextNonSpace = i
+			break
+		}
+	}
+
+	if indent >= 4 {
+		return nil, data
+	}
+
+	var listMarker ListMarker
+	rest := string(data[nextNonSpace:])
+	matched := reBulletListMarker.FindStringSubmatch(rest)
+	if matched != nil {
+		listMarker.Type = "bullet"
+		listMarker.BulletChar = matched[0][0]
+	} else if matched = reOrderedListMarker.FindStringSubmatch(rest); matched != nil && (p.doc.Type != Paragraph || matched[1] == "1") {
+		listMarker.Type = "ordered"
+		listMarker.Start, _ = strconv.Atoi(matched[1])
+		listMarker.Delimiter = matched[2]
+	}
+
+	if nextNonSpace+len(matched[0]) >= len(data) {
+		return nil, data
+	}
+
+	lenMatch := len(matched[0])
+	nextc := data[nextNonSpace+lenMatch]
+	if !(nextc == '\t' || nextc == ' ') {
+		return nil, data
+	}
+
+	// if it is interrupts paragraph, make sure first line isn't blank
+	if p.doc.Type == Paragraph && !reNonSpace.Match(data[nextNonSpace+lenMatch:]) {
+		return nil, data
+	}
+
+	// we've got a match
+	data = data[nextNonSpace:] // start of marker
+	data = data[lenMatch:]     // end of marker
+
+	// skip at most 5 tab or space
+	var iter int
+	var char byte
+	for iter, char = range data {
+		if !(iter < 5 && (char == ' ' || char == '\t')) {
+			break
+		}
+	}
+	afterSpaces := data[iter:]
+	blankItem := len(afterSpaces) == 0
+	spaces_after_marker := iter
+
+	if spaces_after_marker >= 5 || spaces_after_marker < 1 || blankItem {
+		listMarker.Padding = lenMatch + 1
+		if data[0] == ' ' || data[0] == '\t' {
+			data = data[1:]
+		}
+	} else {
+		data = afterSpaces
+		listMarker.Padding = lenMatch + spaces_after_marker
+	}
+
+	return &listMarker, data
+}
+
 // returns unordered list item prefix
 func (p *Markdown) uliPrefix(data []byte) int {
 	i := 0
@@ -1166,6 +1262,7 @@ func (p *Markdown) list(data []byte, flags ListType) int {
 		if flags&ListItemContainsBlock != 0 {
 			block.ListData.Tight = false
 		}
+		p.parseL
 		i += skip
 		if skip == 0 || flags&ListItemEndOfList != 0 {
 			break
